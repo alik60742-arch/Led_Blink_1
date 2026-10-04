@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Cloud Controller</title>
+    <!-- Include MQTT Library -->
+    <script src="https://cloudflare.com" type="text/javascript"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #f4f6f9; }
+        .btn { padding: 15px 40px; font-size: 18px; margin: 10px; cursor: pointer; border: none; border-radius: 5px; color: white; }
+        .on { background-color: #2ec4b6; }
+        .off { background-color: #e71d36; }
+        #status { font-weight: bold; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <h1>Custom ESP32 LED Remote</h1>
+    <p>Operating Pin 19 via Cloud WebSockets</p>
+    
+    <button class="btn on" onclick="sendSignal('1')">Turn ON</button>
+    <button class="btn off" onclick="sendSignal('0')">Turn OFF</button>
+    
+    <div id="status">Connecting to MQTT Server...</div>
+
+    <script>
+        // Change "myUniqueTopic123" to something completely unique to you so no one else intercepts it
+        const MQTT_TOPIC = "yourname/esp32/led19"; 
+        const MQTT_HOST = "://hivemq.com";
+        const MQTT_PORT = 8000; // WebSockets port for browsers
+
+        // Generate a random client ID to avoid collisions
+        const clientId = "web_client_" + Math.random().toString(16).substr(2, 8);
+        const client = new Paho.MQTT.Client(MQTT_HOST, MQTT_PORT, clientId);
+
+        client.onConnectionLost = (responseObject) => {
+            document.getElementById("status").innerText = "Disconnected. Reconnecting...";
+            setTimeout(connectClient, 3000);
+        };
+
+        function connectClient() {
+            client.connect({
+                onSuccess: () => {
+                    document.getElementById("status").innerText = "Connected to Server! Ready.";
+                },
+                onFailure: (err) => {
+                    document.getElementById("status").innerText = "Connection Failed. Retrying...";
+                    setTimeout(connectClient, 3000);
+                },
+                useSSL: false // Set to true if deploying over HTTPS on GitHub and using port 8001/443 if supported by host
+            });
+        }
+
+        function sendSignal(value) {
+            if (client.isConnected()) {
+                const message = new Paho.MQTT.Message(value);
+                message.destinationName = MQTT_TOPIC;
+                client.send(message);
+                console.log("Sent: " + value);
+            } else {
+                alert("Not connected to broker yet.");
+            }
+        }
+
+        // Start connection
+        connectClient();
+    </script>
+</body>
+</html>
